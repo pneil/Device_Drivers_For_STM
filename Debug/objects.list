@@ -1,4 +1,5 @@
 "Src/001ledtoggle.o"
+"Src/I2C_masterTX_test.o"
 "Src/SPI_testing.o"
 "Src/syscalls.o"
 "Src/sysmem.o"

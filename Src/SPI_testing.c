@@ -53,7 +53,7 @@ void SPI2_Init()
 	SPI_Init(&SPI2Handle);
 
 }
-int main(void)
+int main2(void)
 {
 	char userdata[] ="Hello World";
 	SPI2_GPIOInit();
