@@ -20,7 +20,8 @@ static void I2C_GenerateStartCondition(I2C_RegDef_t *pI2Cx)
 	pI2Cx->CR1 |= ( 1 << I2C_CR1_START);
 }
 
-
+uint32_t AHB_ARRAY[8] = { 2,4,8,16,32,64,128,256};
+uint32_t AHB_ARRAY1[4] =  {2,4,8,16};
 
 static void I2C_ExecuteAddressPhaseWrite(I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr)
 {
@@ -36,7 +37,6 @@ static void I2C_ExecuteAddressPhaseRead(I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr)
 	SlaveAddr |= 1; //SlaveAddr is Slave address + r/nw bit=1
 	pI2Cx->DR = SlaveAddr;
 }
-
 
 static void I2C_ClearADDRFlag(I2C_Handle_t *pI2CHandle )
 {
@@ -81,12 +81,10 @@ static void I2C_ClearADDRFlag(I2C_Handle_t *pI2CHandle )
 
 }
 
-
  void I2C_GenerateStopCondition(I2C_RegDef_t *pI2Cx)
 {
 	pI2Cx->CR1 |= ( 1 << I2C_CR1_STOP);
 }
-
 
  void I2C_SlaveEnableDisableCallbackEvents(I2C_RegDef_t *pI2Cx,uint8_t EnorDi)
  {
@@ -104,7 +102,6 @@ static void I2C_ClearADDRFlag(I2C_Handle_t *pI2CHandle )
 
  }
 
-
 void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnOrDi)
 {
 	if(EnOrDi == ENABLE)
@@ -117,7 +114,6 @@ void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnOrDi)
 	}
 
 }
-
 
 void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi)
 {
@@ -138,7 +134,7 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi)
 	{
 		if(pI2Cx == I2C1)
 		{
-			I2C1_PCLK_DI()();
+			I2C1_PCLK_DI();
 		}else if (pI2Cx == I2C2)
 		{
 			I2C2_PCLK_DI();
@@ -148,8 +144,7 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi)
 		}
 	}
 }
-uint32_t AHB_ARRAY[8] = { 2,4,8,16,32,64,128,256};
-uint32_t AHB_ARRAY1[4] =  {2,4,8,16};
+
 uint32_t RCC_GetPCLK1Value()
 {
 	uint32_t  pckl1;
@@ -264,7 +259,18 @@ void I2C_Init(I2C_Handle_t *pI2CHandle)
 
 void I2C_DeInit(I2C_RegDef_t *pI2Cx)
 {
-
+	if(pI2Cx == I2C1)
+	{
+		I2C1_REG_RESET();
+	}
+	else if(pI2Cx == I2C2)
+	{
+		I2C2_REG_RESET();
+	}
+	else if(pI2Cx == I2C3)
+	{
+		I2C3_REG_RESET();
+	}
 }
 
 
@@ -281,24 +287,24 @@ uint8_t I2C_GetFlagStatus(I2C_RegDef_t *pI2Cx , uint32_t FlagName)
 
 void I2C_MasterSendData(I2C_Handle_t *pI2CHandle,uint8_t *pTxbuffer, uint32_t Len, uint8_t SlaveAddr,uint8_t Sr)
 {
-	// 1. Generate the START condition
+	// Generate the START condition
 	I2C_GenerateStartCondition(pI2CHandle->pI2Cx);
 
-	//2. confirm that start generation is completed by checking the SB flag in the SR1
+	// confirm that start generation is completed by checking the SB flag in the SR1
 	//   Note: Until SB is cleared SCL will be stretched (pulled to LOW)
 	while( !  I2C_GetFlagStatus(pI2CHandle->pI2Cx,I2C_FLAG_SB)   );
 
-	//3. Send the address of the slave with r/nw bit set to w(0) (total 8 bits )
+	// Send the address of the slave with r/nw bit set to w(0) (total 8 bits )
 	I2C_ExecuteAddressPhaseWrite(pI2CHandle->pI2Cx,SlaveAddr);
 
-	//4. Confirm that address phase is completed by checking the ADDR flag in teh SR1
+	// Confirm that address phase is completed by checking the ADDR flag in teh SR1
 	while( !  I2C_GetFlagStatus(pI2CHandle->pI2Cx,I2C_FLAG_ADDR)   );
 
-	//5. clear the ADDR flag according to its software sequence
+	// clear the ADDR flag according to its software sequence
 	//   Note: Until ADDR is cleared SCL will be stretched (pulled to LOW)
 	I2C_ClearADDRFlag(pI2CHandle);
 
-	//6. send the data until len becomes 0
+	// send the data until len becomes 0
 
 	while(Len > 0)
 	{
@@ -308,7 +314,7 @@ void I2C_MasterSendData(I2C_Handle_t *pI2CHandle,uint8_t *pTxbuffer, uint32_t Le
 		Len--;
 	}
 
-	//7. when Len becomes zero wait for TXE=1 and BTF=1 before generating the STOP condition
+	//   hen Len becomes zero wait for TXE=1 and BTF=1 before generating the STOP condition
 	//   Note: TXE=1 , BTF=1 , means that both SR and DR are empty and next transmission should begin
 	//   when BTF=1 SCL will be stretched (pulled to LOW)
 
@@ -317,7 +323,7 @@ void I2C_MasterSendData(I2C_Handle_t *pI2CHandle,uint8_t *pTxbuffer, uint32_t Le
 	while(! I2C_GetFlagStatus(pI2CHandle->pI2Cx,I2C_FLAG_BTF) );
 
 
-	//8. Generate STOP condition and master need not to wait for the completion of stop condition.
+	// Generate STOP condition and master need not to wait for the completion of stop condition.
 	//   Note: generating STOP, automatically clears the BTF
 	if(Sr == I2C_DISABLE_SR )
 		I2C_GenerateStopCondition(pI2CHandle->pI2Cx);
@@ -328,17 +334,17 @@ void I2C_MasterSendData(I2C_Handle_t *pI2CHandle,uint8_t *pTxbuffer, uint32_t Le
 void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle,uint8_t *pRxBuffer, uint8_t Len, uint8_t SlaveAddr,uint8_t Sr)
 {
 
-	//1. Generate the START condition
+	//  Generate the START condition
 	I2C_GenerateStartCondition(pI2CHandle->pI2Cx);
 
-	//2. confirm that start generation is completed by checking the SB flag in the SR1
+	// confirm that start generation is completed by checking the SB flag in the SR1
 	//   Note: Until SB is cleared SCL will be stretched (pulled to LOW)
 	while( !  I2C_GetFlagStatus(pI2CHandle->pI2Cx,I2C_FLAG_SB)   );
 
-	//3. Send the address of the slave with r/nw bit set to R(1) (total 8 bits )
+	// Send the address of the slave with r/nw bit set to R(1) (total 8 bits )
 	I2C_ExecuteAddressPhaseRead(pI2CHandle->pI2Cx,SlaveAddr);
 
-	//4. wait until address phase is completed by checking the ADDR flag in teh SR1
+	// wait until address phase is completed by checking the ADDR flag in teh SR1
 	while( !  I2C_GetFlagStatus(pI2CHandle->pI2Cx,I2C_FLAG_ADDR)   );
 
 
@@ -393,11 +399,8 @@ void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle,uint8_t *pRxBuffer, uint8_t 
 
 			//increment the buffer address
 			pRxBuffer++;
-
 		}
-
 	}
-
 	//re-enable ACKing
 	if(pI2CHandle->I2C_Config.I2C_AckControl == I2C_ACK_ENABLE)
 	{
@@ -420,10 +423,8 @@ void I2C_ManageAcking(I2C_RegDef_t *pI2Cx, uint8_t EnorDi)
 	}
 }
 
-
 void I2C_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
 {
-
 	if(EnorDi == ENABLE)
 	{
 		if(IRQNumber <= 31)
@@ -704,7 +705,7 @@ void I2C_EV_IRQHandling(I2C_Handle_t *pI2CHandle)
 	}
 
 	temp3  = pI2CHandle->pI2Cx->SR1 & ( 1 << I2C_SR1_STOPF);
-	//4. Handle For interrupt generated by STOPF event
+	// Handle For interrupt generated by STOPF event
 	// Note : Stop detection flag is applicable only slave mode . For master this flag will never be set
 	//The below code block will not be executed by the master since STOPF will not set in master mode
 	if(temp1 && temp3)
@@ -720,7 +721,7 @@ void I2C_EV_IRQHandling(I2C_Handle_t *pI2CHandle)
 
 
 	temp3  = pI2CHandle->pI2Cx->SR1 & ( 1 << I2C_SR1_TXE);
-	//5. Handle For interrupt generated by TXE event
+	// Handle For interrupt generated by TXE event
 	if(temp1 && temp2 && temp3)
 	{
 		//Check for device mode
@@ -744,7 +745,7 @@ void I2C_EV_IRQHandling(I2C_Handle_t *pI2CHandle)
 	}
 
 	temp3  = pI2CHandle->pI2Cx->SR1 & ( 1 << I2C_SR1_RXNE);
-	//6. Handle For interrupt generated by RXNE event
+	// Handle For interrupt generated by RXNE event
 	if(temp1 && temp2 && temp3)
 	{
 		//check device mode .

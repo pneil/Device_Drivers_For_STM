@@ -1,4 +1,0 @@
-001ledtoggle.c:11:6:delay	16	static
-001ledtoggle.c:16:6:waitMicrosecond	16	static,ignoring_inline_asm
-001ledtoggle.c:31:5:main1	24	static
-001ledtoggle.c:53:6:EXTI0_IRQHandler	8	static
